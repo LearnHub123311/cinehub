@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -347,7 +348,7 @@ header{
 <div class="hero" id="hero-section">
   <div class="hero-badge">🎬 Free Torrent Streaming</div>
   <h1>Movies & Series<br>Ek Hi Jagah</h1>
-  <p>Magnet link se seedha browser mein stream karo ya download karo — koi registration nahi, koi paisa nahi.</p>
+  <p>Magnet link ya Telegram link se seedha browser mein stream karo — koi registration nahi, koi paisa nahi.</p>
   <div class="hero-stats">
     <div class="hstat"><div class="hstat-val" id="stat-total">0</div><div class="hstat-l">Titles</div></div>
     <div class="hstat"><div class="hstat-val" id="stat-movies">0</div><div class="hstat-l">Movies</div></div>
@@ -524,7 +525,7 @@ header{
 
       <div id="sec-movie">
         <div class="field">
-          <label>Download Links</label>
+          <label>Stream Links (Telegram ya Magnet)</label>
           <div id="movie-links"></div>
           <button class="add-lnk-btn" onclick="addML()">+ Quality add karo</button>
         </div>
@@ -547,20 +548,19 @@ header{
 
 <!-- STREAM MODAL -->
 <div class="overlay" id="stream-overlay" onclick="closeStream(event)">
-  <div class="modal" id="stream-modal" style="background:#000;border-color:#111">
+  <div class="modal" id="stream-modal" style="background:#000;border-color:#111; max-width:800px; padding:1.25rem">
     <div class="mhead">
       <span class="mtitle" style="font-size:0.82rem" id="stream-title">Streaming...</span>
       <button class="xbtn" onclick="closeStream()">✕</button>
     </div>
-    <div style="border-radius:8px;overflow:hidden;background:#000;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center">
-      <video id="stream-video" controls style="width:100%;height:100%;object-fit:contain"></video>
+    <div style="border-radius:8px;overflow:hidden;background:#000;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center" id="stream-container">
+      <!-- Player dynamically yahan aayega -->
     </div>
-    <div style="padding:0.5rem 0;font-size:0.68rem;color:var(--muted);text-align:center">WebTorrent se seedha stream ho raha hai</div>
+    <div style="padding:0.5rem 0;font-size:0.68rem;color:var(--muted);text-align:center" id="stream-note">Stream ho raha hai...</div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
-
 <script src="https://cdn.jsdelivr.net/npm/webtorrent@2.1.35/webtorrent.min.js"></script>
 <script>
 const QUALS = ['360p','480p','720p','1080p','2K','4K','HDRip','BluRay','WEB-DL','CAM'];
@@ -658,14 +658,14 @@ function render(){
     const isM=item.type==='movie'||item.type==='documentary';
     let linksHTML='';
     if(isM){
-      linksHTML='<div class="lp-label">Quality choose karo — Download / Stream</div><div class="lrow">'+
-        (item.links||[]).map(l=>'<a class="dlbtn" href="'+l.url+'" title="'+l.url+'"><span class="ql">'+l.qual+'</span> ⬇</a>').join('')+
+      linksHTML='<div class="lp-label">Quality choose karo — Stream Karo</div><div class="lrow">'+
+        (item.links||[]).map(l=>'<a class="dlbtn" href="#" onclick="openStream(\''+l.url+'\', \''+item.title.replace(/'/g,"\\'")+'\'); return false;" title="Stream"><span class="ql">'+l.qual+'</span> ▶ Play</a>').join('')+
         '</div>';
     } else {
       linksHTML='<div class="lp-label">Episodes</div>'+
         (item.episodes||[]).map(ep=>
           '<div class="ep-block-view"><div class="ep-name">'+ep.name+'</div>'+
-          '<div class="lrow">'+(ep.links||[]).map(l=>'<a class="dlbtn" href="'+l.url+'" title="'+l.url+'"><span class="ql">'+l.qual+'</span> ⬇</a>').join('')+'</div></div>'
+          '<div class="lrow">'+(ep.links||[]).map(l=>'<a class="dlbtn" href="#" onclick="openStream(\''+l.url+'\', \''+(item.title+' - '+ep.name).replace(/'/g,"\\'")+'\'); return false;" title="Stream"><span class="ql">'+l.qual+'</span> ▶ Play</a>').join('')+'</div></div>'
         ).join('');
     }
 
@@ -722,21 +722,44 @@ function playDemoMagnet(){
 }
 
 // STREAM
-function openStream(magnet, title){
-  document.getElementById('stream-title').textContent=title||'Streaming...';
+function openStream(url, title){
+  document.getElementById('stream-title').textContent = title || 'Streaming...';
   document.getElementById('stream-overlay').classList.add('show');
-  if(wtClient){try{wtClient.destroy()}catch(e){}}
-  wtClient=new WebTorrent();
-  wtClient.add(magnet,function(torrent){
-    const vf=torrent.files.find(f=>/\.(mp4|mkv|webm|avi|mov)$/i.test(f.name));
-    if(vf){vf.renderTo(document.getElementById('stream-video'),{autoplay:true})}
-    else{toast('Video file nahi mili torrent mein','⚠')}
-  });
+  
+  const container = document.getElementById('stream-container');
+  const note = document.getElementById('stream-note');
+  container.innerHTML = ''; 
+
+  if(wtClient){try{wtClient.destroy()}catch(e){} wtClient=null}
+
+  if (url.includes('t.me/')) {
+    note.textContent = 'Telegram Web Player se stream ho raha hai';
+    let embedUrl = url;
+    if (!embedUrl.includes('?embed=1')) {
+      embedUrl += (embedUrl.includes('?') ? '&' : '?') + 'embed=1';
+    }
+    container.innerHTML = `<iframe src="${embedUrl}" width="100%" height="100%" frameborder="0" allow="autoplay; fullscreen" allowfullscreen style="width:100%;height:100%;"></iframe>`;
+  } 
+  else if (url.startsWith('magnet:')) {
+    note.textContent = 'WebTorrent se seedha stream ho raha hai';
+    container.innerHTML = '<video id="stream-video" controls style="width:100%;height:100%;object-fit:contain"></video>';
+    wtClient = new WebTorrent();
+    wtClient.add(url, function(torrent){
+      const vf = torrent.files.find(f => /\.(mp4|mkv|webm|avi|mov)$/i.test(f.name));
+      if(vf){vf.renderTo(document.getElementById('stream-video'), {autoplay:true})}
+      else{toast('Video file nahi mili torrent mein','⚠')}
+    });
+  } 
+  else {
+    note.textContent = 'Direct server se stream ho raha hai';
+    container.innerHTML = `<video src="${url}" controls autoplay style="width:100%;height:100%;object-fit:contain"></video>`;
+  }
 }
+
 function closeStream(e){
-  if(e&&e.target!==document.getElementById('stream-overlay'))return;
+  if(e && e.target !== document.getElementById('stream-overlay')) return;
   document.getElementById('stream-overlay').classList.remove('show');
-  document.getElementById('stream-video').src='';
+  document.getElementById('stream-container').innerHTML = ''; 
   if(wtClient){try{wtClient.destroy()}catch(ex){} wtClient=null}
 }
 
@@ -792,7 +815,7 @@ function changePin(){
   toast('PIN change ho gaya!','✓');
 }
 
-// ADMIN PANEL — post list
+// ADMIN PANEL
 function showPanel(){
   document.getElementById('lock-screen').style.display='none';
   document.getElementById('admin-form').style.display='none';
@@ -825,7 +848,7 @@ function renderPostList(){
   }).join('');
 }
 
-// ADMIN FORM — add / edit
+// ADMIN FORM
 function showForm(id){
   editId=id;
   document.getElementById('form-title').textContent=id?'✏ Post Edit karo':'＋ Nayi Post';
@@ -848,8 +871,6 @@ function showForm(id){
   document.getElementById('admin-form').style.display='block';
   document.getElementById('overlay').classList.add('show');
 }
-// Keep openAdmin as alias for backward compat
-function openAdmin(id){showForm(id)}
 function resetForm(){
   ['f-title','f-year','f-lang','f-genre','f-poster'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('f-type').value='movie';
@@ -868,7 +889,7 @@ function qualSel(sel){
 }
 function addML(qual,url){
   const d=document.createElement('div');d.className='lnk-row';
-  d.innerHTML=qualSel(qual)+'<input type="text" placeholder="magnet:?xt=... ya https://..." value="'+(url||'')+'"/>'+
+  d.innerHTML=qualSel(qual)+'<input type="text" placeholder="magnet:?xt=... ya https://t.me/..." value="'+(url||'')+'"/>'+
     '<button class="rm" onclick="this.parentNode.remove()">✕</button>';
   document.getElementById('movie-links').appendChild(d);
 }
@@ -876,7 +897,7 @@ function addEP(name,links){
   const id='ep'+Date.now()+Math.random().toString(36).slice(2,6);
   const d=document.createElement('div');d.className='ep-blk';d.id=id;
   const lr=(links||[{qual:'1080p',url:''}]).map(l=>
-    '<div class="lnk-row">'+qualSel(l.qual)+'<input type="text" placeholder="magnet link..." value="'+(l.url||'')+'"/>'+
+    '<div class="lnk-row">'+qualSel(l.qual)+'<input type="text" placeholder="magnet link ya Telegram link..." value="'+(l.url||'')+'"/>'+
     '<button class="rm" onclick="this.parentNode.remove()">✕</button></div>'
   ).join('');
   d.innerHTML='<div class="ep-blk-head"><input type="text" placeholder="e.g. S01E01 - Title" value="'+(name||'')+'"/>'+
@@ -887,7 +908,7 @@ function addEP(name,links){
 }
 function addEPL(epId){
   const d=document.createElement('div');d.className='lnk-row';
-  d.innerHTML=qualSel()+'<input type="text" placeholder="magnet link..."/>'+
+  d.innerHTML=qualSel()+'<input type="text" placeholder="magnet link ya Telegram link..."/>'+
     '<button class="rm" onclick="this.parentNode.remove()">✕</button>';
   document.getElementById(epId).querySelector('.ep-lr-wrap').appendChild(d);
 }
