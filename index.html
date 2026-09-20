@@ -317,6 +317,12 @@ header{
   display:flex;align-items:center;gap:6px;
 }
 .toast.show{opacity:1}
+.hint{font-size:0.66rem;color:var(--muted);line-height:1.5;margin-bottom:0.45rem;text-transform:none;letter-spacing:0;font-weight:500}
+.tg-open{color:var(--acc2);font-weight:700;text-decoration:none}
+.tg-open:hover{text-decoration:underline}
+.io-row{display:flex;gap:0.4rem;margin-bottom:0.75rem}
+.io-btn{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--dim);font-size:0.72rem;padding:0.4rem 0.5rem;cursor:pointer;font-family:inherit}
+.io-btn:hover{border-color:var(--acc);color:var(--acc2)}
 </style>
 </head>
 <body>
@@ -467,6 +473,17 @@ header{
       <!-- Post List -->
       <div id="ap-post-list" style="display:flex;flex-direction:column;gap:0.38rem;max-height:320px;overflow-y:auto;padding-right:2px;margin-bottom:0.75rem"></div>
 
+      <!-- Export / Import -->
+      <div style="border-top:1px solid var(--border);padding-top:0.75rem">
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;font-weight:700;margin-bottom:0.3rem">Sabko dikhane ke liye</div>
+        <div class="hint">Posts sirf is browser me save hote hain. Export karke <b>movies.json</b> ko GitHub me index.html ke saath upload karo — tab sabko dikhegi.</div>
+        <div class="io-row">
+          <button class="io-btn" onclick="exportDB()">⬇ Export movies.json</button>
+          <button class="io-btn" onclick="document.getElementById('import-file').click()">⬆ Import</button>
+          <input type="file" id="import-file" accept="application/json,.json" style="display:none" onchange="importDB(this)" />
+        </div>
+      </div>
+
       <!-- PIN Change -->
       <div style="border-top:1px solid var(--border);padding-top:0.75rem">
         <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;font-weight:700;margin-bottom:0.5rem">PIN Change karo</div>
@@ -525,7 +542,8 @@ header{
 
       <div id="sec-movie">
         <div class="field">
-          <label>Stream Links (Telegram ya Magnet)</label>
+          <label>Telegram Links</label>
+          <div class="hint">Telegram me video pe Share → Copy Link daalo. Channel public hona chahiye. Format: https://t.me/channelname/5</div>
           <div id="movie-links"></div>
           <button class="add-lnk-btn" onclick="addML()">+ Quality add karo</button>
         </div>
@@ -569,7 +587,38 @@ const DEMO_MAGNET = "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1
 
 let db = [], activeFilter = 'all', editId = null;
 let pinBuffer = '', isUnlocked = false;
-let wtClient = null;
+let wtClient = null, tgFrame = null, linkReg = [], sawPrivate = false;
+
+function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function normLink(u){
+  u=(u||'').trim();
+  if(/^(https?:\/\/)?(t|telegram)\.me\//i.test(u)){
+    if(!/^https?:/i.test(u))u='https://'+u;
+    u=u.replace(/^https?:\/\/telegram\.me\//i,'https://t.me/').replace(/^(https:\/\/t\.me\/[^?#]+).*$/i,'$1');
+    if(/t\.me\/c\//i.test(u))sawPrivate=true;
+  }
+  return u;
+}
+function parseTg(url){
+  const m=url.match(/t\.me\/(?:s\/)?([A-Za-z][A-Za-z0-9_]{3,})\/(\d+)/i);
+  return m?{ch:m[1],id:m[2]}:null;
+}
+function exportDB(){
+  const b=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='movies.json';
+  document.body.appendChild(a);a.click();a.remove();
+  toast('movies.json download hua','⬇');
+}
+function importDB(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{const d=JSON.parse(r.result);if(!Array.isArray(d))throw 0;db=d;saveDB();render();showPanel();toast('Import ho gaya!')}
+    catch(e){toast('File sahi nahi hai','⚠')}
+    inp.value='';
+  };
+  r.readAsText(f);
+}
 
 // STARS
 (function(){
@@ -582,37 +631,22 @@ let wtClient = null;
   }
 })();
 
-function loadDB(){
-  try{db=JSON.parse(localStorage.getItem('cinehub_v3')||'[]')}catch(e){db=[]}
-  if(!db.length){
-    db=[
-      {id:1,type:'movie',title:'Big Buck Bunny',year:'2008',lang:'English',genre:'Animation',poster:'',
-       links:[
-         {qual:'480p',url:DEMO_MAGNET},
-         {qual:'720p',url:DEMO_MAGNET},
-         {qual:'1080p',url:DEMO_MAGNET}
-       ]},
-      {id:2,type:'series',title:'Breaking Bad',year:'2008',lang:'English',genre:'Crime, Drama',poster:'',
-       episodes:[
-         {name:'S01E01 - Pilot',links:[{qual:'720p',url:'magnet:?xt=urn:btih:EXAMPLE'},{qual:'1080p',url:'magnet:?xt=urn:btih:EXAMPLE_HD'}]},
-         {name:'S01E02 - Cat\'s in the Bag',links:[{qual:'720p',url:'magnet:?xt=urn:btih:EXAMPLE2'}]}
-       ]},
-      {id:3,type:'anime',title:'Attack on Titan',year:'2013',lang:'Japanese/Hindi',genre:'Action, Fantasy',poster:'',
-       episodes:[
-         {name:'S01E01 - To You in 2000 Years',links:[{qual:'720p',url:'magnet:?xt=urn:btih:AOT1'},{qual:'1080p',url:'magnet:?xt=urn:btih:AOT1HD'}]}
-       ]},
-      {id:4,type:'movie',title:'KGF Chapter 2',year:'2022',lang:'Hindi',genre:'Action, Drama',poster:'',
-       links:[
-         {qual:'480p',url:'magnet:?xt=urn:btih:KGF480'},
-         {qual:'720p',url:'magnet:?xt=urn:btih:KGF720'},
-         {qual:'1080p',url:'magnet:?xt=urn:btih:KGF1080'},
-         {qual:'4K',url:'magnet:?xt=urn:btih:KGF4K'}
-       ]}
-    ];
-    saveDB();
-  }
+const DEFAULT_DB=[
+  {id:1,type:'movie',title:'Big Buck Bunny',year:'2008',lang:'English',genre:'Animation',poster:'',
+   links:[{qual:'480p',url:DEMO_MAGNET},{qual:'720p',url:DEMO_MAGNET},{qual:'1080p',url:DEMO_MAGNET}]}
+];
+async function loadDB(){
+  let local=null;
+  try{local=JSON.parse(localStorage.getItem('cinehub_v3')||'null')}catch(e){}
+  const edited=localStorage.getItem('cinehub_edited')||(Array.isArray(local)&&local.some(d=>d.id>4));
+  if(edited&&Array.isArray(local)){db=local;return}
+  try{
+    const r=await fetch('movies.json',{cache:'no-store'});
+    if(r.ok){const d=await r.json();if(Array.isArray(d)){db=d;return}}
+  }catch(e){}
+  db=(Array.isArray(local)&&local.length)?local:DEFAULT_DB.slice();
 }
-function saveDB(){try{localStorage.setItem('cinehub_v3',JSON.stringify(db))}catch(e){}}
+function saveDB(){try{localStorage.setItem('cinehub_v3',JSON.stringify(db));localStorage.setItem('cinehub_edited','1')}catch(e){}}
 function getPin(){return localStorage.getItem('cinehub_pin')||DEFAULT_PIN}
 function setPin(p){localStorage.setItem('cinehub_pin',p)}
 
@@ -641,7 +675,14 @@ function badgeClass(t){return{movie:'bm',series:'bs',anime:'ba',cartoon:'bc',doc
 function badgeLabel(t){return{movie:'Movie',series:'Series',anime:'Anime',cartoon:'Cartoon',documentary:'Docu'}[t]||t}
 function typeIcon(t){return{movie:'🎬',series:'📺',anime:'⚡',cartoon:'🎨',documentary:'🎥'}[t]||'🎬'}
 
+function playBtn(l,title){
+  linkReg.push({url:l.url,title:title});
+  return '<a class="dlbtn" href="#" onclick="openStreamIdx('+(linkReg.length-1)+');return false" title="Play"><span class="ql">'+esc(l.qual)+'</span> ▶ Play</a>';
+}
+function openStreamIdx(i){const x=linkReg[i];if(x)openStream(x.url,x.title)}
+
 function render(){
+  linkReg=[];
   const list=getFiltered();
   const grid=document.getElementById('grid');
   document.getElementById('cnt-badge').textContent=list.length;
@@ -659,30 +700,30 @@ function render(){
     let linksHTML='';
     if(isM){
       linksHTML='<div class="lp-label">Quality choose karo — Stream Karo</div><div class="lrow">'+
-        (item.links||[]).map(l=>'<a class="dlbtn" href="#" onclick="openStream(\''+l.url+'\', \''+item.title.replace(/'/g,"\\'")+'\'); return false;" title="Stream"><span class="ql">'+l.qual+'</span> ▶ Play</a>').join('')+
+        (item.links||[]).map(l=>playBtn(l,item.title)).join('')+
         '</div>';
     } else {
       linksHTML='<div class="lp-label">Episodes</div>'+
         (item.episodes||[]).map(ep=>
-          '<div class="ep-block-view"><div class="ep-name">'+ep.name+'</div>'+
-          '<div class="lrow">'+(ep.links||[]).map(l=>'<a class="dlbtn" href="#" onclick="openStream(\''+l.url+'\', \''+(item.title+' - '+ep.name).replace(/'/g,"\\'")+'\'); return false;" title="Stream"><span class="ql">'+l.qual+'</span> ▶ Play</a>').join('')+'</div></div>'
+          '<div class="ep-block-view"><div class="ep-name">'+esc(ep.name)+'</div>'+
+          '<div class="lrow">'+(ep.links||[]).map(l=>playBtn(l,item.title+' - '+ep.name)).join('')+'</div></div>'
         ).join('');
     }
 
     const posterHTML=item.poster
-      ?'<img src="'+item.poster+'" onerror="this.parentNode.innerHTML=\''+typeIcon(item.type)+'\'" />'
+      ?'<img src="'+esc(item.poster)+'" onerror="this.parentNode.innerHTML=\''+typeIcon(item.type)+'\'" />'
       :typeIcon(item.type);
 
     return '<div class="card" id="card-'+item.id+'">'+
       '<div class="card-head" onclick="toggleCard('+item.id+')">'+
         '<div class="poster">'+posterHTML+'</div>'+
         '<div class="cinfo">'+
-          '<div class="ctitle">'+item.title+'</div>'+
+          '<div class="ctitle">'+esc(item.title)+'</div>'+
           '<div class="cmeta">'+
             '<span class="badge '+badgeClass(item.type)+'">'+badgeLabel(item.type)+'</span>'+
-            (item.year?'<span class="mtag">'+item.year+'</span>':'')+
-            (item.lang?'<span class="mtag">· '+item.lang+'</span>':'')+
-            (item.genre?'<span class="mtag">· '+item.genre+'</span>':'')+
+            (item.year?'<span class="mtag">'+esc(item.year)+'</span>':'')+
+            (item.lang?'<span class="mtag">· '+esc(item.lang)+'</span>':'')+
+            (item.genre?'<span class="mtag">· '+esc(item.genre)+'</span>':'')+
           '</div>'+
         '</div>'+
         '<div class="cright">'+
@@ -725,41 +766,68 @@ function playDemoMagnet(){
 function openStream(url, title){
   document.getElementById('stream-title').textContent = title || 'Streaming...';
   document.getElementById('stream-overlay').classList.add('show');
-  
+
   const container = document.getElementById('stream-container');
   const note = document.getElementById('stream-note');
-  container.innerHTML = ''; 
+  container.innerHTML = '';
+  container.style.aspectRatio = '16/9';
+  container.style.minHeight = '';
+  container.style.alignItems = 'center';
+  tgFrame = null;
 
   if(wtClient){try{wtClient.destroy()}catch(e){} wtClient=null}
 
-  if (url.includes('t.me/')) {
-    note.textContent = 'Telegram Web Player se stream ho raha hai';
-    let embedUrl = url;
-    if (!embedUrl.includes('?embed=1')) {
-      embedUrl += (embedUrl.includes('?') ? '&' : '?') + 'embed=1';
+  if (/t\.me\//i.test(url)) {
+    const tg = parseTg(url);
+    const openLink = '<a class="tg-open" href="'+esc(url)+'" target="_blank" rel="noopener">Telegram me kholo ↗</a>';
+    if(!tg){
+      container.innerHTML = '<div style="color:var(--dim);font-size:0.78rem;padding:1.5rem;text-align:center;line-height:1.6">Ye private link (t.me/c/...) hai, site pe play nahi hoga.<br>Channel public karo aur username wali link daalo: t.me/channelname/5</div>';
+      note.innerHTML = openLink;
+      return;
     }
-    container.innerHTML = `<iframe src="${embedUrl}" width="100%" height="100%" frameborder="0" allow="autoplay; fullscreen" allowfullscreen style="width:100%;height:100%;"></iframe>`;
-  } 
+    container.style.aspectRatio = 'auto';
+    container.style.minHeight = '360px';
+    container.style.alignItems = 'stretch';
+    const f = document.createElement('iframe');
+    f.src = 'https://t.me/'+tg.ch+'/'+tg.id+'?embed=1&dark=1';
+    f.style.cssText = 'width:100%;height:420px;border:0;background:#000';
+    f.setAttribute('allow','autoplay; fullscreen');
+    f.setAttribute('allowfullscreen','');
+    container.appendChild(f);
+    tgFrame = f;
+    note.innerHTML = 'Video na chale to: ' + openLink;
+  }
   else if (url.startsWith('magnet:')) {
     note.textContent = 'WebTorrent se seedha stream ho raha hai';
     container.innerHTML = '<video id="stream-video" controls style="width:100%;height:100%;object-fit:contain"></video>';
+    if(typeof WebTorrent==='undefined'){toast('WebTorrent load nahi hua','⚠');return}
     wtClient = new WebTorrent();
     wtClient.add(url, function(torrent){
       const vf = torrent.files.find(f => /\.(mp4|mkv|webm|avi|mov)$/i.test(f.name));
       if(vf){vf.renderTo(document.getElementById('stream-video'), {autoplay:true})}
       else{toast('Video file nahi mili torrent mein','⚠')}
     });
-  } 
+  }
   else {
     note.textContent = 'Direct server se stream ho raha hai';
-    container.innerHTML = `<video src="${url}" controls autoplay style="width:100%;height:100%;object-fit:contain"></video>`;
+    container.innerHTML = '<video src="'+esc(url)+'" controls autoplay style="width:100%;height:100%;object-fit:contain"></video>';
   }
 }
+
+// Telegram embed apni height bhejta hai — iframe usi hisaab se resize
+window.addEventListener('message', function(e){
+  if(!tgFrame || e.source !== tgFrame.contentWindow) return;
+  try{
+    const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+    if(d && d.event === 'resize' && d.height) tgFrame.style.height = d.height + 'px';
+  }catch(err){}
+});
 
 function closeStream(e){
   if(e && e.target !== document.getElementById('stream-overlay')) return;
   document.getElementById('stream-overlay').classList.remove('show');
-  document.getElementById('stream-container').innerHTML = ''; 
+  document.getElementById('stream-container').innerHTML = '';
+  tgFrame = null;
   if(wtClient){try{wtClient.destroy()}catch(ex){} wtClient=null}
 }
 
@@ -840,7 +908,7 @@ function renderPostList(){
     return '<div style="display:flex;align-items:center;gap:0.55rem;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0.5rem 0.7rem">'+
       '<span style="font-size:1.05rem;flex-shrink:0">'+(icons[item.type]||'🎬')+'</span>'+
       '<div style="flex:1;min-width:0">'+
-        '<div style="font-size:0.79rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">'+item.title+'</div>'+
+        '<div style="font-size:0.79rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">'+esc(item.title)+'</div>'+
         '<div style="font-size:0.62rem;color:var(--muted)">'+(item.year||'')+(item.lang?' · '+item.lang:'')+' · '+lc+' links</div>'+
       '</div>'+
       '<button onclick="showForm('+item.id+')" style="background:var(--s2);border:1px solid var(--border2);border-radius:7px;color:var(--acc2);font-size:0.7rem;font-weight:700;padding:0.28rem 0.6rem;cursor:pointer;flex-shrink:0">✏ Edit</button>'+
@@ -889,7 +957,7 @@ function qualSel(sel){
 }
 function addML(qual,url){
   const d=document.createElement('div');d.className='lnk-row';
-  d.innerHTML=qualSel(qual)+'<input type="text" placeholder="magnet:?xt=... ya https://t.me/..." value="'+(url||'')+'"/>'+
+  d.innerHTML=qualSel(qual)+'<input type="text" placeholder="https://t.me/channelname/5" value="'+esc(url)+'"/>'+
     '<button class="rm" onclick="this.parentNode.remove()">✕</button>';
   document.getElementById('movie-links').appendChild(d);
 }
@@ -897,10 +965,10 @@ function addEP(name,links){
   const id='ep'+Date.now()+Math.random().toString(36).slice(2,6);
   const d=document.createElement('div');d.className='ep-blk';d.id=id;
   const lr=(links||[{qual:'1080p',url:''}]).map(l=>
-    '<div class="lnk-row">'+qualSel(l.qual)+'<input type="text" placeholder="magnet link ya Telegram link..." value="'+(l.url||'')+'"/>'+
+    '<div class="lnk-row">'+qualSel(l.qual)+'<input type="text" placeholder="https://t.me/channelname/5" value="'+esc(l.url)+'"/>'+
     '<button class="rm" onclick="this.parentNode.remove()">✕</button></div>'
   ).join('');
-  d.innerHTML='<div class="ep-blk-head"><input type="text" placeholder="e.g. S01E01 - Title" value="'+(name||'')+'"/>'+
+  d.innerHTML='<div class="ep-blk-head"><input type="text" placeholder="e.g. S01E01 - Title" value="'+esc(name)+'"/>'+
     '<button class="rm" onclick="document.getElementById(\''+id+'\').remove()">✕</button></div>'+
     '<div class="ep-lr-wrap">'+lr+'</div>'+
     '<button class="add-lnk-btn" onclick="addEPL(\''+id+'\')">+ Quality add karo</button>';
@@ -908,7 +976,7 @@ function addEP(name,links){
 }
 function addEPL(epId){
   const d=document.createElement('div');d.className='lnk-row';
-  d.innerHTML=qualSel()+'<input type="text" placeholder="magnet link ya Telegram link..."/>'+
+  d.innerHTML=qualSel()+'<input type="text" placeholder="https://t.me/channelname/5"/>'+
     '<button class="rm" onclick="this.parentNode.remove()">✕</button>';
   document.getElementById(epId).querySelector('.ep-lr-wrap').appendChild(d);
 }
@@ -918,10 +986,11 @@ function saveItem(){
   const type=document.getElementById('f-type').value;
   const isM=type==='movie'||type==='documentary';
   let links=[],episodes=[];
+  sawPrivate=false;
   if(isM){
     document.querySelectorAll('#movie-links .lnk-row').forEach(r=>{
       const q=r.querySelector('select').value;
-      const u=r.querySelector('input').value.trim();
+      const u=normLink(r.querySelector('input').value);
       if(u)links.push({qual:q,url:u});
     });
     if(!links.length){toast('Ek link toh daalo!','⚠');return}
@@ -931,7 +1000,7 @@ function saveItem(){
       const el=[];
       b.querySelectorAll('.lnk-row').forEach(r=>{
         const q=r.querySelector('select').value;
-        const u=r.querySelector('input').value.trim();
+        const u=normLink(r.querySelector('input').value);
         if(u)el.push({qual:q,url:u});
       });
       if(n||el.length)episodes.push({name:n||'Episode',links:el});
@@ -951,7 +1020,8 @@ function saveItem(){
   else db.unshift(item);
   saveDB();
   render();
-  toast(editId?'Updated!':'Add ho gaya!');
+  if(sawPrivate)toast('Private t.me/c/ link — site pe play nahi hoga, channel public karo','⚠');
+  else toast(editId?'Updated!':'Add ho gaya!');
   showPanel();
 }
 function deleteItem(){
@@ -966,7 +1036,7 @@ function deleteItem(){
 function closeModal(){document.getElementById('overlay').classList.remove('show')}
 function overlayClick(e){if(e.target===document.getElementById('overlay'))closeModal()}
 
-loadDB();render();
+loadDB().then(render);
 </script>
 </body>
 </html>
