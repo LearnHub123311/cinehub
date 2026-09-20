@@ -425,14 +425,66 @@ header{
       <div class="lock-err" id="lock-err"></div>
     </div>
 
-    <!-- ADMIN FORM -->
-    <div id="admin-form" style="display:none">
+    <!-- ADMIN PANEL: MAIN -->
+    <div id="admin-panel" style="display:none">
       <div class="mhead">
-        <span class="mtitle" id="form-title">Add Content</span>
+        <span class="mtitle">⚙ Admin Panel</span>
         <div style="display:flex;gap:0.5rem;align-items:center">
-          <button onclick="lockAdmin()" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:0.65rem;padding:0.2rem 0.5rem;cursor:pointer">Lock</button>
+          <button onclick="lockAdmin()" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:0.65rem;padding:0.2rem 0.5rem;cursor:pointer">🔒 Lock</button>
           <button class="xbtn" onclick="closeModal()">✕</button>
         </div>
+      </div>
+
+      <!-- Stats -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.4rem;margin-bottom:0.9rem">
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.4rem;text-align:center">
+          <div style="font-size:1.1rem;font-weight:800;color:var(--acc2)" id="ap-total">0</div>
+          <div style="font-size:0.6rem;color:var(--muted)">Total</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.4rem;text-align:center">
+          <div style="font-size:1.1rem;font-weight:800;color:var(--acc2)" id="ap-movies">0</div>
+          <div style="font-size:0.6rem;color:var(--muted)">Movies</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.4rem;text-align:center">
+          <div style="font-size:1.1rem;font-weight:800;color:var(--acc2)" id="ap-series">0</div>
+          <div style="font-size:0.6rem;color:var(--muted)">Series</div>
+        </div>
+      </div>
+
+      <!-- Add button -->
+      <button onclick="showForm(null)" style="width:100%;background:var(--acc);color:#fff;border:none;border-radius:9px;padding:0.65rem;font-size:0.82rem;font-weight:800;cursor:pointer;margin-bottom:0.7rem">
+        ＋ Nayi Post Add karo
+      </button>
+
+      <!-- Search -->
+      <div style="position:relative;margin-bottom:0.55rem">
+        <span style="position:absolute;left:0.65rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:0.8rem;pointer-events:none">🔍</span>
+        <input type="text" id="ap-search" placeholder="Post dhundo..." oninput="renderPostList()"
+          style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.78rem;padding:0.45rem 0.75rem 0.45rem 2rem;outline:none;font-family:inherit;transition:border-color 0.2s" onfocus="this.style.borderColor='var(--acc)'" onblur="this.style.borderColor='var(--border)'" />
+      </div>
+
+      <!-- Post List -->
+      <div id="ap-post-list" style="display:flex;flex-direction:column;gap:0.38rem;max-height:320px;overflow-y:auto;padding-right:2px;margin-bottom:0.75rem"></div>
+
+      <!-- PIN Change -->
+      <div style="border-top:1px solid var(--border);padding-top:0.75rem">
+        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;font-weight:700;margin-bottom:0.5rem">PIN Change karo</div>
+        <div class="frow">
+          <div class="field"><input type="password" id="new-pin" placeholder="Naya 4-digit PIN" maxlength="4" /></div>
+          <div class="field"><input type="password" id="new-pin2" placeholder="Confirm PIN" maxlength="4" /></div>
+        </div>
+        <button onclick="changePin()" style="background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--dim);font-size:0.72rem;padding:0.35rem 0.75rem;cursor:pointer;width:100%">PIN Update karo</button>
+      </div>
+    </div>
+
+    <!-- ADMIN FORM: ADD / EDIT -->
+    <div id="admin-form" style="display:none">
+      <div class="mhead">
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          <button onclick="showPanel()" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:0.7rem;padding:0.25rem 0.55rem;cursor:pointer">← Back</button>
+          <span class="mtitle" id="form-title">Add Content</span>
+        </div>
+        <button class="xbtn" onclick="closeModal()">✕</button>
       </div>
 
       <div class="field">
@@ -486,18 +538,8 @@ header{
         </div>
       </div>
 
-      <div class="chpass">
-        <div class="chpass-title">PIN Change karo</div>
-        <div class="frow">
-          <div class="field"><input type="password" id="new-pin" placeholder="Naya 4-digit PIN" maxlength="4" /></div>
-          <div class="field"><input type="password" id="new-pin2" placeholder="Confirm PIN" maxlength="4" /></div>
-        </div>
-        <button onclick="changePin()" style="background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--dim);font-size:0.72rem;padding:0.35rem 0.75rem;cursor:pointer;width:100%">PIN Update karo</button>
-      </div>
-
       <button class="save-btn" onclick="saveItem()">✓ Save karo</button>
-      <button class="del-btn" id="del-btn" style="display:none" onclick="deleteItem()">Delete karo</button>
-      <button onclick="openAdmin(null)" style="background:transparent;border:none;color:var(--acc2);font-size:0.72rem;cursor:pointer;width:100%;margin-top:0.5rem;padding:0.3rem">+ Nayi entry add karo</button>
+      <button class="del-btn" id="del-btn" style="display:none" onclick="deleteItem()">🗑 Delete karo</button>
     </div>
 
   </div>
@@ -644,7 +686,6 @@ function render(){
           '</div>'+
         '</div>'+
         '<div class="cright">'+
-          (isUnlocked?'<span class="edit-ico" onclick="event.stopPropagation();openAdmin('+item.id+')">✏️</span>':'')+
           '<span class="arr">▼</span>'+
         '</div>'+
       '</div>'+
@@ -701,9 +742,10 @@ function closeStream(e){
 
 // PIN / LOCK
 function openAdminGate(){
-  if(isUnlocked){openAdmin(null);return}
+  if(isUnlocked){showPanel();return}
   pinBuffer='';updateDots();
   document.getElementById('lock-screen').style.display='flex';
+  document.getElementById('admin-panel').style.display='none';
   document.getElementById('admin-form').style.display='none';
   document.getElementById('lock-err').textContent='';
   document.getElementById('overlay').classList.add('show');
@@ -725,13 +767,9 @@ function updateDots(){
 function checkPin(){
   if(pinBuffer===getPin()){
     isUnlocked=true;
-    document.getElementById('admin-btn-indicator')&&document.getElementById('admin-toggle-btn').classList.add('admin-active');
+    document.getElementById('admin-toggle-btn').classList.add('admin-active');
     document.getElementById('lock-screen').style.display='none';
-    document.getElementById('admin-form').style.display='block';
-    document.getElementById('form-title').textContent='Add Content';
-    document.getElementById('del-btn').style.display='none';
-    resetForm();addML();
-    render();
+    showPanel();
     toast('Admin unlocked!','🔓');
   } else {
     for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.add('error');
@@ -741,6 +779,7 @@ function checkPin(){
 }
 function lockAdmin(){
   isUnlocked=false;
+  document.getElementById('admin-toggle-btn').classList.remove('admin-active');
   document.getElementById('overlay').classList.remove('show');
   render();toast('Locked','🔒');
 }
@@ -753,10 +792,43 @@ function changePin(){
   toast('PIN change ho gaya!','✓');
 }
 
-// ADMIN FORM
-function openAdmin(id){
+// ADMIN PANEL — post list
+function showPanel(){
+  document.getElementById('lock-screen').style.display='none';
+  document.getElementById('admin-form').style.display='none';
+  document.getElementById('admin-panel').style.display='block';
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('ap-total').textContent=db.length;
+  document.getElementById('ap-movies').textContent=db.filter(d=>d.type==='movie'||d.type==='documentary').length;
+  document.getElementById('ap-series').textContent=db.filter(d=>d.type==='series'||d.type==='anime'||d.type==='cartoon').length;
+  renderPostList();
+}
+function renderPostList(){
+  const q=(document.getElementById('ap-search').value||'').trim().toLowerCase();
+  const list=q?db.filter(d=>d.title.toLowerCase().includes(q)):db;
+  const el=document.getElementById('ap-post-list');
+  if(!list.length){
+    el.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:0.78rem">Koi post nahi — upar se add karo</div>';
+    return;
+  }
+  const icons={movie:'🎬',series:'📺',anime:'⚡',cartoon:'🎨',documentary:'🎥'};
+  el.innerHTML=list.map(item=>{
+    const lc=item.links?item.links.length:(item.episodes||[]).reduce((a,e)=>a+(e.links||[]).length,0);
+    return '<div style="display:flex;align-items:center;gap:0.55rem;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0.5rem 0.7rem">'+
+      '<span style="font-size:1.05rem;flex-shrink:0">'+(icons[item.type]||'🎬')+'</span>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:0.79rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">'+item.title+'</div>'+
+        '<div style="font-size:0.62rem;color:var(--muted)">'+(item.year||'')+(item.lang?' · '+item.lang:'')+' · '+lc+' links</div>'+
+      '</div>'+
+      '<button onclick="showForm('+item.id+')" style="background:var(--s2);border:1px solid var(--border2);border-radius:7px;color:var(--acc2);font-size:0.7rem;font-weight:700;padding:0.28rem 0.6rem;cursor:pointer;flex-shrink:0">✏ Edit</button>'+
+    '</div>';
+  }).join('');
+}
+
+// ADMIN FORM — add / edit
+function showForm(id){
   editId=id;
-  document.getElementById('form-title').textContent=id?'Edit Content':'Add Content';
+  document.getElementById('form-title').textContent=id?'✏ Post Edit karo':'＋ Nayi Post';
   document.getElementById('del-btn').style.display=id?'block':'none';
   resetForm();
   if(id){
@@ -772,10 +844,12 @@ function openAdmin(id){
     if(isM)(item.links||[]).forEach(l=>addML(l.qual,l.url));
     else(item.episodes||[]).forEach(ep=>addEP(ep.name,ep.links));
   } else {typeChanged();addML();}
-  if(!document.getElementById('overlay').classList.contains('show'))document.getElementById('overlay').classList.add('show');
-  document.getElementById('lock-screen').style.display='none';
+  document.getElementById('admin-panel').style.display='none';
   document.getElementById('admin-form').style.display='block';
+  document.getElementById('overlay').classList.add('show');
 }
+// Keep openAdmin as alias for backward compat
+function openAdmin(id){showForm(id)}
 function resetForm(){
   ['f-title','f-year','f-lang','f-genre','f-poster'].forEach(i=>document.getElementById(i).value='');
   document.getElementById('f-type').value='movie';
@@ -855,15 +929,17 @@ function saveItem(){
   if(editId){const i=db.findIndex(d=>d.id===editId);if(i!==-1)db[i]=item;}
   else db.unshift(item);
   saveDB();
-  document.getElementById('overlay').classList.remove('show');
-  render();toast(editId?'Updated!':'Add ho gaya!');
+  render();
+  toast(editId?'Updated!':'Add ho gaya!');
+  showPanel();
 }
 function deleteItem(){
   if(!editId)return;
   db=db.filter(d=>d.id!==editId);
   saveDB();
-  document.getElementById('overlay').classList.remove('show');
-  render();toast('Delete ho gaya!','🗑');
+  render();
+  toast('Delete ho gaya!','🗑');
+  showPanel();
 }
 
 function closeModal(){document.getElementById('overlay').classList.remove('show')}
