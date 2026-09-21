@@ -593,10 +593,45 @@ header{
 
 <div class="toast" id="toast"></div>
 
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+  import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+
+  try {
+    if (!String(FIREBASE_CONFIG.apiKey).startsWith('PASTE_') && FIREBASE_CONFIG.databaseURL) {
+      const app = initializeApp(FIREBASE_CONFIG);
+      firebaseDb = getDatabase(app);
+      firebaseReady = true;
+      window.firebaseDB = firebaseDb;
+      window.firebaseRef = ref;
+      window.firebaseOnValue = onValue;
+      window.firebaseSet = set;
+      console.log('Firebase connected');
+    }
+  } catch (e) {
+    console.error('Firebase init failed:', e);
+  }
+</script>
 <script>
 // ─── CONFIG ────────────────────────────────────────────────────────────────
 const DEFAULT_PIN = '1234';
 const STORAGE_KEY = 'learnhub_v1';
+
+// ─── FIREBASE CONFIG ─────────────────────────────────────────────────────────
+// Firebase Console → Project settings → Your apps → Web app se ye values copy karo.
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAWrMYeFllR5K4Gc4rRoPuzNUkLM4iJOGk",
+  authDomain: "tutorial-206b4.firebaseapp.com",
+  databaseURL: "https://tutorial-206b4-default-rtdb.firebaseio.com",
+  projectId: "tutorial-206b4",
+  storageBucket: "tutorial-206b4.firebasestorage.app",
+  messagingSenderId: "703294584004",
+  appId: "1:703294584004:web:b22654995c0b434d574591",
+  measurementId: "G-NKW9YLKMHW"
+};
+let firebaseReady = false;
+let firebaseDb = null;
+let firebaseListener = null;
 
 // Types where single-video mode is used vs lesson mode
 const SINGLE_TYPES = ['course','guide','webinar'];
@@ -816,6 +851,35 @@ const DEFAULT_DB = [
 async function loadDB(){
   let local = null;
   try{ local = JSON.parse(localStorage.getItem(STORAGE_KEY)||'null') }catch(e){}
+
+  // Firebase is the shared source of truth.
+  if(firebaseReady && window.firebaseDB){
+    try{
+      const dataRef = window.firebaseRef(window.firebaseDB, 'learnhub/tutorials');
+      window.firebaseOnValue(dataRef, snapshot => {
+        const d = snapshot.val();
+        if(Array.isArray(d)){
+          db = d;
+        } else if(d && typeof d === 'object'){
+          db = Object.values(d);
+        } else {
+          db = (Array.isArray(local) && local.length) ? local : DEFAULT_DB.slice();
+          saveDB();
+          return;
+        }
+        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }catch(e){}
+        render();
+        if(isUnlocked) showPanel();
+      }, err => {
+        console.error('Firebase read failed:', err);
+        db = (Array.isArray(local) && local.length) ? local : DEFAULT_DB.slice();
+        render();
+      });
+      return;
+    }catch(e){ console.error(e); }
+  }
+
+  // Offline/fallback mode.
   const edited = localStorage.getItem(STORAGE_KEY+'_edited');
   if(edited && Array.isArray(local)){ db = local; return; }
   try{
@@ -824,11 +888,19 @@ async function loadDB(){
   }catch(e){}
   db = (Array.isArray(local) && local.length) ? local : DEFAULT_DB.slice();
 }
+
 function saveDB(){
   try{
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
     localStorage.setItem(STORAGE_KEY+'_edited','1');
   }catch(e){}
+
+  // Sync every Admin change to Firebase so every phone gets the update.
+  if(firebaseReady && window.firebaseDB){
+    window.firebaseSet(window.firebaseRef(window.firebaseDB, 'learnhub/tutorials'), db)
+      .then(()=>toast('Online database update ho gaya!','☁'))
+      .catch(err=>{ console.error('Firebase write failed:', err); toast('Online update failed','⚠'); });
+  }
 }
 function getPin(){ return localStorage.getItem('learnhub_pin') || DEFAULT_PIN; }
 function setPin(p){ localStorage.setItem('learnhub_pin', p); }
