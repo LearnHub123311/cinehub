@@ -546,15 +546,9 @@ header{
         </div>
       </div>
 
-      <div class="frow">
-        <div class="field">
-          <label>Language</label>
-          <input type="text" id="f-lang" placeholder="Hindi, English, Urdu" />
-        </div>
-        <div class="field">
-          <label>Topic / Category</label>
-          <input type="text" id="f-genre" placeholder="Python, Design, Excel..." />
-        </div>
+      <div class="field">
+        <label>Language</label>
+        <input type="text" id="f-lang" placeholder="Hindi, English, Urdu" />
       </div>
 
       <div class="field">
@@ -602,25 +596,7 @@ header{
 
 <div class="toast" id="toast"></div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-  import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
-  try {
-    if (!String(FIREBASE_CONFIG.apiKey).startsWith('PASTE_') && FIREBASE_CONFIG.databaseURL) {
-      const app = initializeApp(FIREBASE_CONFIG);
-      firebaseDb = getDatabase(app);
-      firebaseReady = true;
-      window.firebaseDB = firebaseDb;
-      window.firebaseRef = ref;
-      window.firebaseOnValue = onValue;
-      window.firebaseSet = set;
-      console.log('Firebase connected');
-    }
-  } catch (e) {
-    console.error('Firebase init failed:', e);
-  }
-</script>
 <script>
 // ─── FIREBASE + LEARNHUB CONFIG ─────────────────────────────────────────────
 const FIREBASE_CONFIG = {
@@ -650,10 +626,6 @@ let activeFilter='all', editId=null, linkReg=[], currentVideoUrl='';
 let firebaseApp=null, firebaseDB=null, firebaseAuth=null, firebaseFns=null;
 let authReady=false, isAdmin=false, dbUnsub=null, profileUnsub=null;
 
-const DEFAULT_DB = [
-  {id:1,type:'course',title:'Python for Beginners — Full Course',desc:'Python programming bilkul scratch se seekho. Variables, loops, functions, projects sab kuch.',year:'2024',lang:'Hindi + English',genre:'Python / Programming',poster:'',links:[{qual:'HD',url:'https://www.youtube.com/watch?v=rfscVS0vtbw'},{qual:'Full HD',url:'https://www.youtube.com/watch?v=rfscVS0vtbw'}]},
-  {id:2,type:'tutorial',title:'Web Design Crash Course',desc:'HTML, CSS aur basic JavaScript se ek complete website banao.',year:'2024',lang:'Hinglish',genre:'Web Development',poster:'',episodes:[{name:'Lesson 1 — HTML Basics',links:[{qual:'HD',url:'https://www.youtube.com/watch?v=UB1O30fR-EE'}]},{name:'Lesson 2 — CSS Styling',links:[{qual:'HD',url:'https://www.youtube.com/watch?v=yfoY53QXEnI'}]},{name:'Lesson 3 — JavaScript Intro',links:[{qual:'HD',url:'https://www.youtube.com/watch?v=W6NZfCO5SIk'}]}]}
-];
 
 function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function toast(msg,ic){const t=document.getElementById('toast');t.innerHTML=(ic||'✓')+' '+msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
@@ -711,12 +683,12 @@ function overlayVideoClick(e){if(e.target===document.getElementById('video-overl
 (function(){const s=document.getElementById('stars');for(let i=0;i<60;i++){const d=document.createElement('div');d.className='star';d.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;--d:'+(2+Math.random()*4)+'s;--delay:'+(Math.random()*3)+'s;opacity:'+(0.1+Math.random()*0.5);s.appendChild(d);}})();
 
 function setFilter(f,btn){activeFilter=f;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('on'));btn.classList.add('on');render();}
-function getFiltered(){const q=document.getElementById('search').value.trim().toLowerCase();return db.filter(item=>{const mf=activeFilter==='all'||item.type===activeFilter;const ms=!q||item.title.toLowerCase().includes(q)||(item.genre||'').toLowerCase().includes(q)||(item.lang||'').toLowerCase().includes(q)||(item.desc||'').toLowerCase().includes(q);return mf&&ms;});}
+function getFiltered(){const q=document.getElementById('search').value.trim().toLowerCase();return db.filter(item=>{const mf=activeFilter==='all'||item.type===activeFilter;const ms=!q||item.title.toLowerCase().includes(q)||(item.lang||'').toLowerCase().includes(q)||(item.desc||'').toLowerCase().includes(q);return mf&&ms;});}
 function badgeClass(t){return{course:'bm',tutorial:'bs',workshop:'ba',guide:'bc',webinar:'be'}[t]||'bm';}
 function badgeLabel(t){return{course:'Course',tutorial:'Tutorial',workshop:'Workshop',guide:'Guide',webinar:'Webinar'}[t]||t;}
 function typeIcon(t){return{course:'📚',tutorial:'🎯',workshop:'🛠',guide:'📖',webinar:'🎙'}[t]||'📚';}
 function playBtn(l,title){linkReg.push({url:l.url,title:title});const i=linkReg.length-1;return'<a class="playbtn" href="#" onclick="openVideo(linkReg['+i+'].url,linkReg['+i+'].title);return false"><span class="ql">'+esc(l.qual)+'</span> ▶ Play</a>';}
-function render(){linkReg=[];const list=getFiltered(),grid=document.getElementById('grid'),q=document.getElementById('search').value.trim();document.getElementById('cnt-badge').textContent=list.length;document.getElementById('sec-lbl').textContent=q?'Results for "'+q+'"':(activeFilter==='all'?'All Tutorials':badgeLabel(activeFilter)+'s');updateStats();if(!list.length){grid.innerHTML='<div class="empty"><div class="empty-ico">📚</div><div class="empty-txt">Koi tutorial nahi mila</div></div>';return;}grid.innerHTML=list.map(item=>{const single=SINGLE_TYPES.includes(item.type);let linksHTML='';if(single){linksHTML='<div class="lp-label">📹 Video — Quality choose karo</div><div class="lrow">'+(item.links||[]).map(l=>playBtn(l,item.title)).join('')+'</div>';}else{linksHTML='<div class="lp-label">📋 Lessons / Chapters</div>'+(item.episodes||[]).map((ep,i)=>'<div class="ep-block-view"><div class="ep-name"><span class="ep-num">'+(i+1)+'</span>'+esc(ep.name)+'</div><div class="lrow">'+(ep.links||[]).map(l=>playBtn(l,item.title+' — '+ep.name)).join('')+'</div></div>').join('');}const count=single?(item.links||[]).length+' video'+((item.links||[]).length!==1?'s':''):(item.episodes||[]).length+' lesson'+((item.episodes||[]).length!==1?'s':'');const poster=item.poster?'<img src="'+esc(normalizePosterUrl(item.poster))+'" onerror="this.parentNode.innerHTML=\''+typeIcon(item.type)+'\'">':typeIcon(item.type);return'<div class="card" id="card-'+item.id+'"><div class="card-head" onclick="toggleCard('+item.id+')"><div class="poster">'+poster+'</div><div class="cinfo"><div class="ctitle">'+esc(item.title)+'</div>'+(item.desc?'<div class="cdesc">'+esc(item.desc)+'</div>':'')+'<div class="cmeta"><span class="badge '+badgeClass(item.type)+'">'+badgeLabel(item.type)+'</span>'+(item.year?'<span class="mtag">'+esc(item.year)+'</span>':'')+(item.lang?'<span class="mtag">· '+esc(item.lang)+'</span>':'')+(item.genre?'<span class="mtag">· '+esc(item.genre)+'</span>':'')+'<span class="mtag">· '+count+'</span></div></div><div class="cright"><span class="arr">▼</span></div></div><div class="links-panel">'+linksHTML+'</div></div>';}).join('');}
+function render(){linkReg=[];const list=getFiltered(),grid=document.getElementById('grid'),q=document.getElementById('search').value.trim();document.getElementById('cnt-badge').textContent=list.length;document.getElementById('sec-lbl').textContent=q?'Results for "'+q+'"':(activeFilter==='all'?'All Tutorials':badgeLabel(activeFilter)+'s');updateStats();if(!list.length){grid.innerHTML='<div class="empty"><div class="empty-ico">📚</div><div class="empty-txt">Koi tutorial nahi mila</div></div>';return;}grid.innerHTML=list.map(item=>{const single=SINGLE_TYPES.includes(item.type);let linksHTML='';if(single){linksHTML='<div class="lp-label">📹 Video — Quality choose karo</div><div class="lrow">'+(item.links||[]).map(l=>playBtn(l,item.title)).join('')+'</div>';}else{linksHTML='<div class="lp-label">📋 Lessons / Chapters</div>'+(item.episodes||[]).map((ep,i)=>'<div class="ep-block-view"><div class="ep-name"><span class="ep-num">'+(i+1)+'</span>'+esc(ep.name)+'</div><div class="lrow">'+(ep.links||[]).map(l=>playBtn(l,item.title+' — '+ep.name)).join('')+'</div></div>').join('');}const count=single?(item.links||[]).length+' video'+((item.links||[]).length!==1?'s':''):(item.episodes||[]).length+' lesson'+((item.episodes||[]).length!==1?'s':'');const poster=item.poster?'<img src="'+esc(normalizePosterUrl(item.poster))+'" onerror="this.parentNode.innerHTML=\''+typeIcon(item.type)+'\'">':typeIcon(item.type);return'<div class="card" id="card-'+item.id+'"><div class="card-head" onclick="toggleCard('+item.id+')"><div class="poster">'+poster+'</div><div class="cinfo"><div class="ctitle">'+esc(item.title)+'</div>'+(item.desc?'<div class="cdesc">'+esc(item.desc)+'</div>':'')+'<div class="cmeta"><span class="badge '+badgeClass(item.type)+'">'+badgeLabel(item.type)+'</span>'+(item.year?'<span class="mtag">'+esc(item.year)+'</span>':'')+(item.lang?'<span class="mtag">· '+esc(item.lang)+'</span>':'')+'<span class="mtag">· '+count+'</span></div></div><div class="cright"><span class="arr">▼</span></div></div><div class="links-panel">'+linksHTML+'</div></div>';}).join('');}
 function updateStats(){document.getElementById('stat-total').textContent=db.length;document.getElementById('stat-courses').textContent=db.filter(d=>d.type==='course'||d.type==='guide'||d.type==='webinar').length;document.getElementById('stat-tutorials').textContent=db.filter(d=>d.type==='tutorial'||d.type==='workshop').length;}
 function toggleCard(id){const el=document.getElementById('card-'+id);if(el)el.classList.toggle('open');}
 
@@ -730,9 +702,22 @@ async function initFirebase(){
     firebaseApp=appMod.initializeApp(FIREBASE_CONFIG);
     firebaseDB=dbMod.getDatabase(firebaseApp); firebaseAuth=authMod.getAuth(firebaseApp); authReady=true;
     authMod.onAuthStateChanged(firebaseAuth,user=>{isAdmin=!!user;document.getElementById('admin-toggle-btn').classList.toggle('admin-active',!!user);if(user)closeLoginUI();});
-    dbUnsub=dbMod.onValue(dbMod.ref(firebaseDB,DB_PATH),snap=>{const v=snap.val();if(Array.isArray(v)){db=v;}else if(v&&typeof v==='object'){db=Object.values(v);}else if(!db.length){db=DEFAULT_DB.slice();}render();if(document.getElementById('admin-panel').style.display==='block')showPanel();});
+    dbUnsub=dbMod.onValue(dbMod.ref(firebaseDB,DB_PATH),snap=>{
+      const v=snap.val();
+      // Firebase is the single source of truth. A null/empty snapshot means the
+      // admin deleted everything; never restore old/default videos locally.
+      if(Array.isArray(v)){
+        db=v;
+      }else if(v&&typeof v==='object'){
+        db=Object.values(v);
+      }else{
+        db=[];
+      }
+      render();
+      if(document.getElementById('admin-panel').style.display==='block')showPanel();
+    });
     profileUnsub=dbMod.onValue(dbMod.ref(firebaseDB,PROFILE_PATH),snap=>{const v=snap.val();if(v&&typeof v==='object')profile={...profile,...v};applyProfile();fillProfileForm();});
-  }catch(e){console.error(e);toast('Firebase load nahi hua','⚠');db=DEFAULT_DB.slice();render();}
+  }catch(e){console.error(e);toast('Firebase load nahi hua','⚠');db=[];render();}
 }
 function applyProfile(){
   document.title=(profile.name||'LearnHub')+' — Free Tutorials';
@@ -767,11 +752,11 @@ function addSL(qual,url){const d=document.createElement('div');d.className='lnk-
 function addLesson(name,links){const id='ls'+Date.now()+Math.random().toString(36).slice(2,6),d=document.createElement('div');d.className='ep-blk';d.id=id;const lr=(links||[{qual:'HD',url:''}]).map(l=>'<div class="lnk-row">'+qualSel(l.qual)+'<input type="text" placeholder="YouTube / Dropbox / Drive URL..." value="'+esc(l.url)+'"><button class="rm" onclick="this.parentNode.remove()">✕</button></div>').join('');d.innerHTML='<div class="ep-blk-head"><input type="text" placeholder="Lesson / Chapter name" value="'+esc(name)+'"><button class="rm" onclick="document.getElementById(\''+id+'\').remove()">✕</button></div><div class="ep-lr-wrap">'+lr+'</div><button class="add-lnk-btn" onclick="addLessonLink(\''+id+'\')">+ Quality add karo</button>';document.getElementById('lesson-list').appendChild(d);}
 function addLessonLink(id){const d=document.createElement('div');d.className='lnk-row';d.innerHTML=qualSel()+'<input type="text" placeholder="YouTube / Dropbox / Drive URL..."><button class="rm" onclick="this.parentNode.remove()">✕</button>';document.getElementById(id).querySelector('.ep-lr-wrap').appendChild(d);}
 function typeChanged(){const t=document.getElementById('f-type').value,s=SINGLE_TYPES.includes(t);document.getElementById('sec-single').style.display=s?'':'none';document.getElementById('sec-lessons').style.display=s?'none':'';}
-function showForm(id){if(!requireAdmin())return;editId=id;document.getElementById('form-title').textContent=id?'✏ Tutorial Edit karo':'＋ Nayi Tutorial';document.getElementById('del-btn').style.display=id?'block':'none';resetForm();if(id){const item=db.find(d=>String(d.id)===String(id));if(!item)return;document.getElementById('f-title').value=item.title||'';document.getElementById('f-desc').value=item.desc||'';document.getElementById('f-type').value=item.type||'course';document.getElementById('f-year').value=item.year||'';document.getElementById('f-lang').value=item.lang||'';document.getElementById('f-genre').value=item.genre||'';document.getElementById('f-poster').value=item.poster||'';typeChanged();if(SINGLE_TYPES.includes(item.type))(item.links||[]).forEach(l=>addSL(l.qual,l.url));else(item.episodes||[]).forEach(ep=>addLesson(ep.name,ep.links));}else{typeChanged();addSL();}document.getElementById('admin-panel').style.display='none';document.getElementById('admin-form').style.display='block';}
-function resetForm(){['f-title','f-desc','f-year','f-lang','f-genre','f-poster'].forEach(i=>document.getElementById(i).value='');document.getElementById('f-type').value='course';document.getElementById('single-links').innerHTML='';document.getElementById('lesson-list').innerHTML='';}
+function showForm(id){if(!requireAdmin())return;editId=id;document.getElementById('form-title').textContent=id?'✏ Tutorial Edit karo':'＋ Nayi Tutorial';document.getElementById('del-btn').style.display=id?'block':'none';resetForm();if(id){const item=db.find(d=>String(d.id)===String(id));if(!item)return;document.getElementById('f-title').value=item.title||'';document.getElementById('f-desc').value=item.desc||'';document.getElementById('f-type').value=item.type||'course';document.getElementById('f-year').value=item.year||'';document.getElementById('f-lang').value=item.lang||'';document.getElementById('f-poster').value=item.poster||'';typeChanged();if(SINGLE_TYPES.includes(item.type))(item.links||[]).forEach(l=>addSL(l.qual,l.url));else(item.episodes||[]).forEach(ep=>addLesson(ep.name,ep.links));}else{typeChanged();addSL();}document.getElementById('admin-panel').style.display='none';document.getElementById('admin-form').style.display='block';}
+function resetForm(){['f-title','f-desc','f-year','f-lang','f-poster'].forEach(i=>document.getElementById(i).value='');document.getElementById('f-type').value='course';document.getElementById('single-links').innerHTML='';document.getElementById('lesson-list').innerHTML='';}
 
 async function saveItem(){if(!requireAdmin())return;const title=document.getElementById('f-title').value.trim();if(!title){toast('Title daalo!','⚠');return;}const type=document.getElementById('f-type').value,single=SINGLE_TYPES.includes(type);let links=[],episodes=[];if(single){document.querySelectorAll('#single-links .lnk-row').forEach(r=>{const q=r.querySelector('select').value,u=r.querySelector('input').value.trim();if(u)links.push({qual:q,url:u});});if(!links.length){toast('Ek video link toh daalo!','⚠');return;}}else{document.querySelectorAll('#lesson-list .ep-blk').forEach(b=>{const n=b.querySelector('.ep-blk-head input').value.trim(),el=[];b.querySelectorAll('.lnk-row').forEach(r=>{const q=r.querySelector('select').value,u=r.querySelector('input').value.trim();if(u)el.push({qual:q,url:u});});if(n||el.length)episodes.push({name:n||'Lesson',links:el});});if(!episodes.length){toast('Ek lesson toh daalo!','⚠');return;}}
-  const item={id:editId||Date.now(),type,title,desc:document.getElementById('f-desc').value.trim(),year:document.getElementById('f-year').value.trim(),lang:document.getElementById('f-lang').value.trim(),genre:document.getElementById('f-genre').value.trim(),poster:normalizePosterUrl(document.getElementById('f-poster').value.trim())};if(single)item.links=links;else item.episodes=episodes;
+  const item={id:editId||Date.now(),type,title,desc:document.getElementById('f-desc').value.trim(),year:document.getElementById('f-year').value.trim(),lang:document.getElementById('f-lang').value.trim(),poster:normalizePosterUrl(document.getElementById('f-poster').value.trim())};if(single)item.links=links;else item.episodes=episodes;
   try{if(editId){const i=db.findIndex(d=>String(d.id)===String(editId));if(i!==-1)db[i]=item;}else db.unshift(item);await firebaseFns.set(firebaseFns.ref(firebaseDB,DB_PATH),db);render();toast(editId?'Updated!':'Add ho gaya!');showPanel();}catch(e){console.error(e);toast('Firebase save failed: '+(e.code||'permission-denied'),'⚠');}
 }
 async function deleteItem(){if(!requireAdmin()||!editId)return;if(!confirm('Is content ko permanently delete karna hai?'))return;const old=db.slice();db=db.filter(d=>String(d.id)!==String(editId));try{await firebaseFns.set(firebaseFns.ref(firebaseDB,DB_PATH),db);render();toast('Delete ho gaya!','🗑');showPanel();}catch(e){db=old;toast('Delete failed: Firebase permission denied','⚠');}}
